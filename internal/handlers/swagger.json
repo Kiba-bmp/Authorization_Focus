@@ -1,0 +1,224 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Focus Account Cabinet API",
+    "version": "1.0",
+    "description": "Личный кабинет: регистрация, вход, подтверждение почты, профиль. Платежи в API не входят."
+  },
+  "basePath": "/",
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Health check",
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Регистрация",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/RegisterRequest" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Токен (SKIP_EMAIL_VERIFICATION=true)", "schema": { "$ref": "#/definitions/AuthResponse" } },
+          "201": { "description": "Нужна верификация", "schema": { "$ref": "#/definitions/RegisterPendingResponse" } },
+          "400": { "schema": { "$ref": "#/definitions/ErrorBody" } },
+          "409": { "schema": { "$ref": "#/definitions/ErrorBody" } }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Вход",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/LoginRequest" }
+          }
+        ],
+        "responses": {
+          "200": { "schema": { "$ref": "#/definitions/AuthResponse" } },
+          "401": { "schema": { "$ref": "#/definitions/ErrorBody" } },
+          "403": { "schema": { "$ref": "#/definitions/ErrorBody" } }
+        }
+      }
+    },
+    "/api/auth/verify-email": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Подтверждение email по коду",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/VerifyEmailRequest" }
+          }
+        ],
+        "responses": {
+          "200": { "schema": { "$ref": "#/definitions/AuthResponse" } },
+          "400": { "schema": { "$ref": "#/definitions/ErrorBody" } }
+        }
+      }
+    },
+    "/api/auth/resend-verification": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Повторная отправка кода",
+        "consumes": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/ResendVerificationRequest" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "OK" },
+          "400": { "schema": { "$ref": "#/definitions/ErrorBody" } },
+          "404": { "schema": { "$ref": "#/definitions/ErrorBody" } }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Текущий пользователь",
+        "produces": ["application/json"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "schema": { "$ref": "#/definitions/UserMeResponse" } },
+          "401": { "schema": { "$ref": "#/definitions/ErrorBody" } }
+        }
+      },
+      "patch": {
+        "tags": ["users"],
+        "summary": "Обновление профиля",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/UpdateProfileRequest" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "OK" },
+          "400": { "schema": { "$ref": "#/definitions/ErrorBody" } },
+          "401": { "schema": { "$ref": "#/definitions/ErrorBody" } },
+          "409": { "schema": { "$ref": "#/definitions/ErrorBody" } }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RegisterRequest": {
+      "type": "object",
+      "required": ["userName", "email", "password"],
+      "properties": {
+        "userName": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" }
+      }
+    },
+    "LoginRequest": {
+      "type": "object",
+      "required": ["email", "password"],
+      "properties": {
+        "email": { "type": "string" },
+        "password": { "type": "string" }
+      }
+    },
+    "AuthResponse": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "email": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "accessToken": { "type": "string" },
+        "expiresAt": { "type": "string" }
+      }
+    },
+    "RegisterPendingResponse": {
+      "type": "object",
+      "properties": {
+        "verificationRequired": { "type": "boolean" },
+        "email": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    },
+    "VerifyEmailRequest": {
+      "type": "object",
+      "required": ["email", "code"],
+      "properties": {
+        "email": { "type": "string" },
+        "code": { "type": "string" }
+      }
+    },
+    "ResendVerificationRequest": {
+      "type": "object",
+      "required": ["email"],
+      "properties": {
+        "email": { "type": "string" }
+      }
+    },
+    "UserMeResponse": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "email": { "type": "string" },
+        "avatarEmoji": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "todayMinutes": { "type": "integer" },
+        "weekMinutes": { "type": "integer" }
+      }
+    },
+    "UpdateProfileRequest": {
+      "type": "object",
+      "required": ["currentPassword"],
+      "properties": {
+        "currentPassword": { "type": "string" },
+        "userName": { "type": "string" },
+        "email": { "type": "string" },
+        "newPassword": { "type": "string" },
+        "avatarEmoji": { "type": "string" }
+      }
+    },
+    "ErrorBody": {
+      "type": "object",
+      "properties": {
+        "error": { "type": "string" }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Bearer JWT"
+    }
+  }
+}
