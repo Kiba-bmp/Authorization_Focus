@@ -7,12 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func IssueToken(secret string, userID string, ttl time.Duration) (string, time.Time, error) {
-	exp := time.Now().Add(ttl)
+func IssueToken(secret, userID string, ttl time.Duration) (string, time.Time, error) {
+	now := time.Now()
+	exp := now.Add(ttl)
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Subject:   userID,
 		ExpiresAt: jwt.NewNumericDate(exp),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		IssuedAt:  jwt.NewNumericDate(now),
 	})
 	s, err := t.SignedString([]byte(secret))
 	if err != nil {
@@ -22,7 +23,8 @@ func IssueToken(secret string, userID string, ttl time.Duration) (string, time.T
 }
 
 func ParseToken(secret, tokenString string) (userID string, err error) {
-	t, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(t *jwt.Token) (any, error) {
+	claims := &jwt.RegisteredClaims{}
+	t, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
@@ -31,12 +33,12 @@ func ParseToken(secret, tokenString string) (userID string, err error) {
 	if err != nil {
 		return "", err
 	}
-	claims, ok := t.Claims.(*jwt.RegisteredClaims)
+	parsedClaims, ok := t.Claims.(*jwt.RegisteredClaims)
 	if !ok || !t.Valid {
 		return "", fmt.Errorf("invalid token")
 	}
-	if claims.Subject == "" {
+	if parsedClaims.Subject == "" {
 		return "", fmt.Errorf("invalid token")
 	}
-	return claims.Subject, nil
+	return parsedClaims.Subject, nil
 }

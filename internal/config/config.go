@@ -2,50 +2,42 @@ package config
 
 import (
 	"os"
-	"strconv"
 	"time"
 )
 
+const (
+	DefaultAddr               = ":8081"
+	DefaultDatabaseURL        = "postgres://focus:focus@127.0.0.1:5432/focus_account_cabinet?sslmode=disable"
+	DefaultJWTSecret          = "dev-insecure-change-me"
+	DefaultBackendURL         = "http://localhost:8082"
+	DefaultBackendInternalKey = "backend-internal-dev-key"
+	MigrationsDir             = "migrations"
+	JWTExpiry                 = 168 * time.Hour
+	BackendTimeout            = 5 * time.Second
+)
+
 type Config struct {
-	Addr                   string
-	DatabasePath           string
-	JWTSecret              string
-	JWTExpiry              time.Duration
-	VerificationCodeTTL    time.Duration
-	SkipEmailVerification  bool
+	Addr               string
+	DatabaseURL        string
+	JWTSecret          string
+	BackendURL         string
+	BackendInternalKey string
 }
 
 func Load() Config {
-	jwtExp := 168 * time.Hour // 7d
-	if s := os.Getenv("JWT_EXPIRY_HOURS"); s != "" {
-		if h, err := strconv.Atoi(s); err == nil && h > 0 {
-			jwtExp = time.Duration(h) * time.Hour
-		}
-	}
-	codeTTL := 15 * time.Minute
-	if s := os.Getenv("VERIFICATION_CODE_TTL_MINUTES"); s != "" {
-		if m, err := strconv.Atoi(s); err == nil && m > 0 {
-			codeTTL = time.Duration(m) * time.Minute
-		}
-	}
-	addr := os.Getenv("ADDR")
-	if addr == "" {
-		addr = ":8080"
-	}
-	dbPath := os.Getenv("DATABASE_PATH")
-	if dbPath == "" {
-		dbPath = "account-cabinet.db"
-	}
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "dev-insecure-change-me"
-	}
 	return Config{
-		Addr:                  addr,
-		DatabasePath:          dbPath,
-		JWTSecret:             secret,
-		JWTExpiry:             jwtExp,
-		VerificationCodeTTL:   codeTTL,
-		SkipEmailVerification: os.Getenv("SKIP_EMAIL_VERIFICATION") == "true",
+		Addr:               envOrDefault("ADDR", DefaultAddr),
+		DatabaseURL:        envOrDefault("DATABASE_URL", DefaultDatabaseURL),
+		JWTSecret:          envOrDefault("JWT_SECRET", DefaultJWTSecret),
+		BackendURL:         envOrDefault("BACKEND_URL", DefaultBackendURL),
+		BackendInternalKey: envOrDefault("BACKEND_INTERNAL_KEY", DefaultBackendInternalKey),
 	}
+}
+
+func envOrDefault(key, fallback string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	return value
 }

@@ -2,16 +2,14 @@ package handlers
 
 import (
 	"focus/account-cabinet/internal/config"
-	"focus/account-cabinet/internal/mailer"
-	"focus/account-cabinet/internal/store"
+	"focus/account-cabinet/internal/service"
 )
 
 type Server struct {
-	store *store.Store
-	cfg   config.Config
-	mail  *mailer.Console
+	auth *service.AuthService
+	cfg  config.Config
 }
 
-func NewServer(st *store.Store, cfg config.Config, mail *mailer.Console) *Server {
-	return &Server{store: st, cfg: cfg, mail: mail}
+func NewServer(authSvc *service.AuthService, cfg config.Config) *Server {
+	return &Server{auth: authSvc, cfg: cfg}
 }

@@ -1,4 +1,4 @@
-# Account Cabinet Backend
+# Focus Auth
 
 Локальный backend-сервис для личного кабинета в Focus Android: регистрация, логин, подтверждение email, JWT-авторизация и управление профилем.
 

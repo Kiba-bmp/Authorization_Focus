@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.DS_Store
+bin
+dist
+tmp
+temp
+coverage.out
+*.log
+*.test
+*.out
