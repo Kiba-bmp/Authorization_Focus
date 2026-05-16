@@ -51,6 +51,6 @@ jobs:
             set -eu
             cd "$DEPLOY_PATH"
 
-            docker compose pull auth
-            docker compose up -d auth
-            docker image prune -f
+            sudo docker compose pull auth
+            sudo docker compose up -d auth
+            sudo docker image prune -f
