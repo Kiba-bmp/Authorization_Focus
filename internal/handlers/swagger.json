@@ -7,7 +7,7 @@
   },
   "basePath": "/",
   "paths": {
-    "/health": {
+    "/api/auth/health": {
       "get": {
         "tags": ["system"],
         "summary": "Health check",
@@ -63,9 +63,8 @@
   "definitions": {
     "RegisterRequest": {
       "type": "object",
-      "required": ["userName", "email", "password"],
+      "required": ["email", "password"],
       "properties": {
-        "userName": { "type": "string" },
         "email": { "type": "string" },
         "password": { "type": "string" }
       }

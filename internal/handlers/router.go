@@ -10,7 +10,7 @@ import (
 
 // Mount registers HTTP routes on r.
 func (s *Server) Mount(r *gin.Engine) {
-	r.GET("/health", health)
+	r.GET("/api/auth/health", health)
 
 	auth := r.Group("/api/auth")
 	{
@@ -18,11 +18,11 @@ func (s *Server) Mount(r *gin.Engine) {
 		auth.POST("/login", s.Login)
 	}
 
-	// Спецификация не под /swagger/* — иначе catch-all конфликтует с фиксированным путём в дереве Gin.
-	r.GET("/openapi.json", func(c *gin.Context) {
+	// Документация auth под тем же префиксом /api/auth
+	r.GET("/api/auth/openapi.json", func(c *gin.Context) {
 		c.Data(http.StatusOK, "application/json", swaggerSpecJSON)
 	})
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/openapi.json")))
+	r.GET("/api/auth/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/api/auth/openapi.json")))
 }
 
 func health(c *gin.Context) {

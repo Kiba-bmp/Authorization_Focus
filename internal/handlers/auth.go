@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
 	"focus/account-cabinet/internal/api"
-	"focus/account-cabinet/internal/repository"
 	"focus/account-cabinet/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -24,18 +22,17 @@ func toAuthResponse(result *service.AuthResult) api.AuthResponse {
 func (s *Server) Register(c *gin.Context) {
 	var req api.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorBody{Error: "invalid request body"})
+		c.JSON(http.StatusBadRequest, api.ErrorBody{Error: "Некорректное тело запроса."})
 		return
 	}
 
-	result, err := s.auth.Register(c.Request.Context(), req.UserName, req.Email, req.Password)
+	result, err := s.auth.Register(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
-		switch {
-		case errors.Is(err, repository.ErrEmailTaken):
-			c.JSON(http.StatusConflict, api.ErrorBody{Error: "email already registered"})
-		default:
-			c.JSON(http.StatusInternalServerError, api.ErrorBody{Error: "registration failed"})
+		if appErr, ok := service.AsAppError(err); ok {
+			c.JSON(appErr.StatusCode, api.ErrorBody{Error: appErr.Message})
+			return
 		}
+		c.JSON(http.StatusInternalServerError, api.ErrorBody{Error: "Не удалось выполнить регистрацию."})
 		return
 	}
 
@@ -45,18 +42,17 @@ func (s *Server) Register(c *gin.Context) {
 func (s *Server) Login(c *gin.Context) {
 	var req api.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorBody{Error: "invalid request body"})
+		c.JSON(http.StatusBadRequest, api.ErrorBody{Error: "Некорректное тело запроса."})
 		return
 	}
 
 	result, err := s.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidCredentials):
-			c.JSON(http.StatusUnauthorized, api.ErrorBody{Error: "invalid email or password"})
-		default:
-			c.JSON(http.StatusInternalServerError, api.ErrorBody{Error: "login failed"})
+		if appErr, ok := service.AsAppError(err); ok {
+			c.JSON(appErr.StatusCode, api.ErrorBody{Error: appErr.Message})
+			return
 		}
+		c.JSON(http.StatusInternalServerError, api.ErrorBody{Error: "Не удалось выполнить вход."})
 		return
 	}
 

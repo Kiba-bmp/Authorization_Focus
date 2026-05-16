@@ -15,14 +15,14 @@ const ctxUserID = "userID"
 func (s *Server) RequireAuth(c *gin.Context) {
 	h := c.GetHeader("Authorization")
 	if h == "" || !strings.HasPrefix(strings.ToLower(h), "bearer ") {
-		c.JSON(http.StatusUnauthorized, api.ErrorBody{Error: "missing or invalid authorization"})
+		c.JSON(http.StatusUnauthorized, api.ErrorBody{Error: "Отсутствует или некорректен заголовок авторизации."})
 		c.Abort()
 		return
 	}
 	raw := strings.TrimSpace(h[7:])
 	uid, err := auth.ParseToken(s.cfg.JWTSecret, raw)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, api.ErrorBody{Error: "invalid or expired token"})
+		c.JSON(http.StatusUnauthorized, api.ErrorBody{Error: "Токен недействителен или срок его действия истёк."})
 		c.Abort()
 		return
 	}

@@ -17,9 +17,13 @@ func main() {
 	cfg := config.Load()
 	st, err := store.Open(cfg)
 	if err != nil {
-		log.Fatalf("db: %v", err)
+		log.Fatalf("Ошибка запуска хранилища: %v", err)
 	}
-	defer st.Close()
+	defer func() {
+		if err := st.Close(); err != nil {
+			log.Printf("Ошибка при закрытии соединения с базой данных: %v", err)
+		}
+	}()
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -27,15 +31,15 @@ func main() {
 
 	db := st.DB()
 	userRepo := repository.NewUserRepository(db)
-	backendClient := appclient.New(cfg.BackendURL, cfg.BackendInternalKey, config.BackendTimeout)
+	backendClient := appclient.New(cfg.BackendURL, cfg.BackendInternalKey)
 
 	authService := service.NewAuthService(cfg, userRepo, backendClient)
 
 	srv := handlers.NewServer(authService, cfg)
 	srv.Mount(r)
 
-	log.Printf("focus-auth listening on %s  swagger: http://127.0.0.1%s/swagger/index.html\n", cfg.Addr, cfg.Addr)
+	log.Printf("Сервис auth запущен на %s. Swagger: http://127.0.0.1%s/swagger/index.html", cfg.Addr, cfg.Addr)
 	if err := r.Run(cfg.Addr); err != nil {
-		log.Fatal(err)
+		log.Fatalf("Ошибка запуска HTTP-сервера: %v", err)
 	}
 }

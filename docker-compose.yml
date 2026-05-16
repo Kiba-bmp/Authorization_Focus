@@ -1,22 +1,4 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: focus-auth-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-focus}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-focus}
-      POSTGRES_DB: ${POSTGRES_DB:-focus_account_cabinet}
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-focus} -d ${POSTGRES_DB:-focus_account_cabinet}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   auth:
     build:
       context: .
@@ -24,19 +6,12 @@ services:
     image: focus-auth:local
     container_name: focus-auth
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      ADDR: :8081
-      DATABASE_URL: postgres://${POSTGRES_USER:-focus}:${POSTGRES_PASSWORD:-focus}@postgres:5432/${POSTGRES_DB:-focus_account_cabinet}?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me}
+      DATABASE_URL: postgres://${POSTGRES_USER:-focus}:${POSTGRES_PASSWORD:-focus}@${POSTGRES_HOST:-host.docker.internal}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-focus_auth}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-focus-local-jwt-secret-change-me}
       BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8082}
       BACKEND_INTERNAL_KEY: ${BACKEND_INTERNAL_KEY:-backend-internal-dev-key}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "${AUTH_PORT:-8081}:8081"
-
-volumes:
-  postgres_data:

@@ -19,17 +19,25 @@ type Client struct {
 	httpClient  *http.Client
 }
 
-type UserProvisionRequest struct {
-	UserID   string `json:"userId"`
-	UserName string `json:"userName"`
-	Email    string `json:"email"`
+type ResponseError struct {
+	StatusCode int
+	Message    string
 }
 
-func New(baseURL, internalKey string, timeout time.Duration) *Client {
+func (e *ResponseError) Error() string {
+	return e.Message
+}
+
+type UserProvisionRequest struct {
+	UserID string `json:"userId"`
+	Email  string `json:"email"`
+}
+
+func New(baseURL, internalKey string) *Client {
 	return &Client{
 		baseURL:     strings.TrimRight(baseURL, "/"),
 		internalKey: internalKey,
-		httpClient:  &http.Client{Timeout: timeout},
+		httpClient:  &http.Client{Timeout: time.Second * 10},
 	}
 }
 
@@ -66,7 +74,7 @@ func (c *Client) newJSONRequest(ctx context.Context, method, path string, body a
 func (c *Client) do(req *http.Request, out any) error {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка запроса к backend: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -79,8 +87,25 @@ func (c *Client) do(req *http.Request, out any) error {
 	default:
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		if len(body) == 0 {
-			return fmt.Errorf("backend returned %s", resp.Status)
+			return &ResponseError{
+				StatusCode: resp.StatusCode,
+				Message:    "backend вернул ошибку без описания.",
+			}
 		}
-		return fmt.Errorf("backend returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
+
+		var payload struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(body, &payload); err == nil && strings.TrimSpace(payload.Error) != "" {
+			return &ResponseError{
+				StatusCode: resp.StatusCode,
+				Message:    strings.TrimSpace(payload.Error),
+			}
+		}
+
+		return &ResponseError{
+			StatusCode: resp.StatusCode,
+			Message:    strings.TrimSpace(string(body)),
+		}
 	}
 }

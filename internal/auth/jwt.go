@@ -24,12 +24,13 @@ func IssueToken(secret, userID string, ttl time.Duration) (string, time.Time, er
 
 func ParseToken(secret, tokenString string) (userID string, err error) {
 	claims := &jwt.RegisteredClaims{}
-	t, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
-		return []byte(secret), nil
-	})
+	t, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(_ *jwt.Token) (any, error) { return []byte(secret), nil },
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithLeeway(time.Minute),
+	)
 	if err != nil {
 		return "", err
 	}

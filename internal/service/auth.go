@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"focus/account-cabinet/internal/appclient"
 	"focus/account-cabinet/internal/auth"
 	"focus/account-cabinet/internal/config"
 	"focus/account-cabinet/internal/repository"
-	"strings"
 )
 
 type AuthService struct {
@@ -24,43 +24,63 @@ func NewAuthService(cfg config.Config, users *repository.UserRepository, appUser
 	}
 }
 
-func (s *AuthService) Register(ctx context.Context, userName, email, password string) (*AuthResult, error) {
+func (s *AuthService) Register(ctx context.Context, email, password string) (*AuthResult, error) {
+	email = normalizeEmail(email)
+
+	if err := validateRegisterInput(email, password); err != nil {
+		return nil, err
+	}
+
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("не удалось подготовить пароль: %w", err)
 	}
 
 	user, err := s.users.Create(ctx, repository.CreateUserParams{
-		Email:        normalizeEmail(email),
+		Email:        email,
 		PasswordHash: hash,
 	})
 	if err != nil {
-		return nil, err
+		if errors.Is(err, repository.ErrEmailTaken) {
+			return nil, conflict("Пользователь с такой почтой уже зарегистрирован.")
+		}
+		return nil, fmt.Errorf("не удалось создать пользователя auth: %w", err)
 	}
 
 	err = s.appUsers.ProvisionUser(ctx, appclient.UserProvisionRequest{
-		UserID:   user.ID,
-		UserName: strings.TrimSpace(userName),
-		Email:    user.Email,
+		UserID: user.ID,
+		Email:  user.Email,
 	})
 	if err != nil {
 		_ = s.users.DeleteByID(ctx, user.ID)
-		return nil, err
+		var responseErr *appclient.ResponseError
+		if errors.As(err, &responseErr) {
+			return nil, &AppError{
+				StatusCode: responseErr.StatusCode,
+				Message:    responseErr.Message,
+			}
+		}
+		return nil, fmt.Errorf("не удалось создать пользователя в backend: %w", err)
 	}
 
 	return issueAuthResult(s.cfg, user)
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*AuthResult, error) {
-	user, err := s.users.GetByEmail(ctx, normalizeEmail(email))
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrInvalidCredentials
-		}
+	email = normalizeEmail(email)
+	if err := validateLoginInput(email, password); err != nil {
 		return nil, err
 	}
+
+	user, err := s.users.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, unauthorized("Неверная почта или пароль.")
+		}
+		return nil, fmt.Errorf("не удалось загрузить пользователя: %w", err)
+	}
 	if !auth.CheckPassword(user.PasswordHash, password) {
-		return nil, ErrInvalidCredentials
+		return nil, unauthorized("Неверная почта или пароль.")
 	}
 	return issueAuthResult(s.cfg, user)
 }
